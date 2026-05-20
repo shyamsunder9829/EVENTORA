@@ -18,7 +18,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Operating system and editor files
+# Operating system and editor files.
 .DS_Store
 Thumbs.db
 *.swp
