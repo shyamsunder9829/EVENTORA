@@ -13,13 +13,26 @@ exports.sendBookingOTP = async (req, res) => {
       email: req.user.email,
       action: "event_booking",
     });
-    await OTP.create({ email: req.user.email, otp, action: "event_booking" });
-    await sendOTPEmail(req.user.email, otp, "event_booking");
+    const otpRecord = await OTP.create({
+      email: req.user.email,
+      otp,
+      action: "event_booking",
+    });
+    try {
+      await sendOTPEmail(req.user.email, otp, "event_booking");
+    } catch (emailError) {
+      await OTP.deleteOne({ _id: otpRecord._id });
+      throw emailError;
+    }
     res.json({ message: "OTP sent successfully" });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error sending OTP", error: error.message });
+    console.error("Booking OTP error:", error);
+    if (error.code === "EAUTH" || error.responseCode === 535) {
+      return res.status(502).json({
+        message: "We could not send your booking code. Please try again later.",
+      });
+    }
+    res.status(500).json({ message: "Error sending OTP" });
   }
 };
 
