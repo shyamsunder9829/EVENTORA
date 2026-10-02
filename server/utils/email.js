@@ -1,20 +1,45 @@
-const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const path = require('path');
 
-dotenv.config({ path: require('path').resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+const sendEmail = async ({ to, subject, html }) => {
+    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
+        throw new Error('RESEND_API_KEY and EMAIL_FROM must be configured');
     }
-});
+
+    const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            from: process.env.EMAIL_FROM,
+            to: [to],
+            subject,
+            html,
+        }),
+        signal: AbortSignal.timeout(10000),
+    });
+
+    let result = {};
+    try {
+        result = await response.json();
+    } catch {
+        // Keep the HTTP status as the useful error when the provider has no JSON response.
+    }
+
+    if (!response.ok) {
+        throw new Error(result.message || `Email provider returned HTTP ${response.status}`);
+    }
+
+    return result;
+};
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
     try {
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
+        await sendEmail({
             to: userEmail,
             subject: `Booking Confirmed: ${eventTitle}`,
             html: `
@@ -22,8 +47,7 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
         <p>Your booking for the event <strong>${eventTitle}</strong> is successfully confirmed.</p>
         <p>Thank you for choosing Eventora.</p>
       `
-        };
-        await transporter.sendMail(mailOptions);
+        });
         console.log('Email sent successfully to', userEmail);
     } catch (error) {
         console.error('Error sending email:', error);
@@ -37,7 +61,6 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         : 'Please use the following OTP to verify and confirm your event booking.';
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
         to: userEmail,
         subject: title,
         html: `
@@ -52,7 +75,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
             `
     };
     try {
-        await transporter.sendMail(mailOptions);
+        await sendEmail(mailOptions);
     } catch (error) {
         console.error('Error sending OTP email:', error);
         throw error;
