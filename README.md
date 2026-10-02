@@ -94,9 +94,12 @@ Add these environment variables in the Render service settings:
 
 - `MONGO_URI`: MongoDB Atlas connection string
 - `JWT_SECRET`: a new, long random secret
-- `EMAIL_USER`: Gmail address used to send messages
-- `EMAIL_PASS`: Gmail App Password
+- `SMTP_HOST`: SMTP relay host (for example, `smtp-relay.brevo.com`)
+- `SMTP_PORT`: `2525` for a relay that supports it
+- `SMTP_USER`: SMTP login provided by your mail provider
+- `SMTP_PASS`: SMTP key/password provided by your mail provider
+- `EMAIL_FROM`: verified sender address, such as `Eventora <you@example.com>`
 
 Do not set `PORT`; Render provides it. In MongoDB Atlas, allow connections from the Render service. If using Atlas's `0.0.0.0/0` access rule, use a strong database password and keep the connection string private. Do not commit `server/.env`; use Render's environment settings for production secrets.
 
-The Express server serves the built React app and `/api` from the same origin, so the deployed client does not need a separate service or API URL setting.
+Use an SMTP provider and port supported by Render's network. Gmail SMTP ports can time out from Render; a Nodemailer-compatible relay on port `2525` avoids that restriction. The Express server serves the built React app and `/api` from the same origin, so the deployed client does not need a separate service or API URL setting.

@@ -3,18 +3,29 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: require('path').resolve(__dirname, '../.env') });
 
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+const defaultSmtpPort = smtpHost === 'smtp.gmail.com' ? 465 : 2525;
+const smtpPort = Number(process.env.SMTP_PORT || defaultSmtpPort);
+const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER;
+
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    requireTLS: smtpPort !== 465,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.SMTP_USER || process.env.EMAIL_USER,
+        pass: process.env.SMTP_PASS || process.env.EMAIL_PASS
     }
 });
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
     try {
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: emailFrom,
             to: userEmail,
             subject: `Booking Confirmed: ${eventTitle}`,
             html: `
@@ -37,7 +48,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         : 'Please use the following OTP to verify and confirm your event booking.';
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: emailFrom,
         to: userEmail,
         subject: title,
         html: `
