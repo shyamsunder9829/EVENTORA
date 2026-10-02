@@ -1,7 +1,9 @@
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const dns = require('node:dns');
 
 dotenv.config({ path: require('path').resolve(__dirname, '../.env') });
+dns.setDefaultResultOrder('ipv4first');
 
 const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
 const defaultSmtpPort = smtpHost === 'smtp.gmail.com' ? 465 : 2525;
