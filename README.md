@@ -32,11 +32,11 @@ Navigate to `server/.env` and fill in the necessary keys:
 ```env
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=supersecretjwtkey_eventora
-RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM="Eventora <noreply@your-verified-domain.com>"
+EMAIL_USER=your_gmail_address
+EMAIL_PASS=your_gmail_app_password
 PORT=5000
 ```
-> **Note**: Create a Resend account, verify your sending domain, and create an API key. The sender address in `EMAIL_FROM` must belong to that verified domain. Email delivery uses Resend's HTTPS API instead of SMTP.
+> **Note**: For `EMAIL_PASS`, you need to generate an "App Password" from your Google Account settings, standard passwords won't work due to 2FA.
 
 ### 2. Run from Outer Folder (Single Terminal)
 You can now manage both backend and frontend from the project root:
@@ -94,8 +94,8 @@ Add these environment variables in the Render service settings:
 
 - `MONGO_URI`: MongoDB Atlas connection string
 - `JWT_SECRET`: a new, long random secret
-- `RESEND_API_KEY`: API key from Resend
-- `EMAIL_FROM`: sender address on a domain verified with Resend
+- `EMAIL_USER`: Gmail address used to send messages
+- `EMAIL_PASS`: Gmail App Password
 
 Do not set `PORT`; Render provides it. In MongoDB Atlas, allow connections from the Render service. If using Atlas's `0.0.0.0/0` access rule, use a strong database password and keep the connection string private. Do not commit `server/.env`; use Render's environment settings for production secrets.
 
