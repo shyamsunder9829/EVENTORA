@@ -27,7 +27,7 @@ exports.sendBookingOTP = async (req, res) => {
     res.json({ message: "OTP sent successfully" });
   } catch (error) {
     console.error("Booking OTP error:", error);
-    if (error.code === "EAUTH" || error.responseCode === 535) {
+    if (error.emailDeliveryError || error.code === "EAUTH" || error.responseCode === 535) {
       return res.status(502).json({
         message: "We could not send your booking code. Please try again later.",
       });

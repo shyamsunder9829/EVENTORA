@@ -9,6 +9,8 @@ const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
 const defaultSmtpPort = smtpHost === 'smtp.gmail.com' ? 465 : 2525;
 const smtpPort = Number(process.env.SMTP_PORT || defaultSmtpPort);
 const emailFrom = process.env.EMAIL_FROM || process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER;
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendFrom = process.env.RESEND_FROM || emailFrom;
 
 const transporter = nodemailer.createTransport({
     host: smtpHost,
@@ -24,6 +26,37 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+const deliverEmail = async (mailOptions) => {
+    try {
+        if (resendApiKey) {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${resendApiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    from: resendFrom,
+                    to: [mailOptions.to],
+                    subject: mailOptions.subject,
+                    html: mailOptions.html
+                })
+            });
+
+            if (!response.ok) {
+                const details = await response.json().catch(() => ({}));
+                throw new Error(details.message || `Resend request failed (${response.status})`);
+            }
+            return;
+        }
+
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        error.emailDeliveryError = true;
+        throw error;
+    }
+};
+
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
     try {
         const mailOptions = {
@@ -36,7 +69,7 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
         <p>Thank you for choosing Eventora.</p>
       `
         };
-        await transporter.sendMail(mailOptions);
+        await deliverEmail(mailOptions);
         console.log('Email sent successfully to', userEmail);
     } catch (error) {
         console.error('Error sending email:', error);
@@ -65,7 +98,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
             `
     };
     try {
-        await transporter.sendMail(mailOptions);
+        await deliverEmail(mailOptions);
     } catch (error) {
         console.error('Error sending OTP email:', error);
         throw error;
