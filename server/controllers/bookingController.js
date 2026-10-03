@@ -5,6 +5,8 @@ const { sendBookingEmail, sendOTPEmail } = require("../utils/email");
 
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
+const isEmailDeliveryError = (error) =>
+  error.emailDeliveryError || error.code === "EAUTH" || error.responseCode === 535;
 
 exports.sendBookingOTP = async (req, res) => {
   try {
@@ -27,7 +29,7 @@ exports.sendBookingOTP = async (req, res) => {
     res.json({ message: "OTP sent successfully" });
   } catch (error) {
     console.error("Booking OTP error:", error);
-    if (error.emailDeliveryError || error.code === "EAUTH" || error.responseCode === 535) {
+    if (isEmailDeliveryError(error)) {
       return res.status(502).json({
         message: "We could not send your booking code. Please try again later.",
       });

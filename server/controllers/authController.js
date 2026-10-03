@@ -9,6 +9,8 @@ const generateOTP = () =>
 
 const isSmtpAuthenticationError = (error) =>
   error.code === "EAUTH" || error.responseCode === 535;
+const isEmailDeliveryError = (error) =>
+  error.emailDeliveryError || isSmtpAuthenticationError(error);
 
 const generateToken = (id, role) => {
   return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "30d" });
@@ -17,9 +19,8 @@ const generateToken = (id, role) => {
 exports.register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
+    const user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: "User already exists" });
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -45,10 +46,9 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    if (error.emailDeliveryError || isSmtpAuthenticationError(error)) {
+    if (isEmailDeliveryError(error)) {
       return res.status(502).json({
-        message:
-          "We could not send the verification email. Please try registering again later.",
+        message: "We could not send the verification email. Please try again later.",
       });
     }
     res.status(500).json({ message: "Server Error" });
@@ -98,7 +98,7 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    if (error.emailDeliveryError || isSmtpAuthenticationError(error)) {
+    if (isEmailDeliveryError(error)) {
       return res.status(502).json({
         message: "We could not send your verification email. Please try again later.",
       });
@@ -122,13 +122,11 @@ exports.verifyOTP = async (req, res) => {
 
     let user = await User.findOne({ email });
     if (user) {
-      if (!user.isVerified) {
-        user = await User.findOneAndUpdate(
-          { email },
-          { isVerified: true },
-          { new: true },
-        );
-      }
+      user = await User.findOneAndUpdate(
+        { email },
+        { isVerified: true },
+        { new: true },
+      );
     } else if (validOTP.pendingUser) {
       user = await User.create({
         name: validOTP.pendingUser.name,
