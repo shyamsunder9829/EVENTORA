@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: eventora
+    runtime: node
+    buildCommand: npm ci --prefix server && npm ci --prefix client && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
