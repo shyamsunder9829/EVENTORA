@@ -3,45 +3,61 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+const getTransporter = () => {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        throw new Error('EMAIL_USER and EMAIL_PASS must be configured to send email');
     }
-});
+
+    const port = Number(process.env.SMTP_PORT || 465);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        throw new Error('SMTP_PORT must be a valid port number');
+    }
+
+    const secureSetting = process.env.SMTP_SECURE?.toLowerCase();
+    if (secureSetting && secureSetting !== 'true' && secureSetting !== 'false') {
+        throw new Error('SMTP_SECURE must be set to true or false');
+    }
+    const secure = secureSetting === undefined ? port === 465 : secureSetting === 'true';
+
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port,
+        secure,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+};
+
+const getFromAddress = () => process.env.EMAIL_FROM || process.env.EMAIL_USER;
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
-    try {
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: userEmail,
-            subject: `Booking Confirmed: ${eventTitle}`,
-            html: `
+    const mailOptions = {
+        from: getFromAddress(),
+        to: userEmail,
+        subject: `Booking Confirmed: ${eventTitle}`,
+        html: `
         <h2>Hi ${userName}!</h2>
         <p>Your booking for the event <strong>${eventTitle}</strong> is successfully confirmed.</p>
         <p>Thank you for choosing Eventora.</p>
       `
-        };
-        await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully to', userEmail);
-    } catch (error) {
-        console.error('Error sending email:', error);
-    }
+    };
+    await getTransporter().sendMail(mailOptions);
+    console.log('Booking confirmation email sent successfully to', userEmail);
 };
 
 const sendOTPEmail = async (userEmail, otp, type) => {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        throw new Error('EMAIL_USER and EMAIL_PASS must be configured to send OTP email');
-    }
-
     const title = type === 'account_verification' ? 'Verify your Eventora Account' : 'Eventora Booking Verification';
     const msg = type === 'account_verification'
         ? 'Please use the following OTP to verify your new Eventora account.'
         : 'Please use the following OTP to verify and confirm your event booking.';
 
     const mailOptions = {
-        from: process.env.EMAIL_USER,
+        from: getFromAddress(),
         to: userEmail,
         subject: title,
         html: `
@@ -56,7 +72,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         `
     };
 
-    await transporter.sendMail(mailOptions);
+    await getTransporter().sendMail(mailOptions);
     console.log(`OTP sent to ${userEmail} for ${type}`);
 };
 
