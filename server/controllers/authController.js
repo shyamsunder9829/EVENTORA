@@ -58,11 +58,7 @@ exports.register = async (req, res) => {
         });
     } catch (error) {
         console.error('Registration failed:', error);
-        res.status(500).json({
-            message: ['SMTP_CONFIG', 'SMTP_DELIVERY'].includes(error.code)
-                ? error.message
-                : 'Unable to send verification email. Check the server email configuration and try again.'
-        });
+        res.status(500).json({ message: 'Unable to send verification email. Check the server email configuration and try again.' });
     }
 };
 
