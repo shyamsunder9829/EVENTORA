@@ -33,7 +33,30 @@ const getTransporter = () => {
     });
 };
 
-const getFromAddress = () => process.env.EMAIL_FROM || process.env.EMAIL_USER;
+const getFromAddress = () => {
+    const fromAddress = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    if (process.env.NODE_ENV === 'production' && !process.env.EMAIL_FROM) {
+        throw new Error('EMAIL_FROM must be set to a verified sender address in production');
+    }
+    return fromAddress;
+};
+
+const sendMail = async (mailOptions, recipient, messageType) => {
+    const result = await getTransporter().sendMail(mailOptions);
+    const recipientAccepted = result.accepted.some(
+        (acceptedAddress) => acceptedAddress.toLowerCase() === recipient.toLowerCase()
+    );
+
+    if (!recipientAccepted) {
+        throw new Error(`SMTP server did not accept ${messageType} for the recipient`);
+    }
+
+    console.log(`${messageType} accepted by SMTP`, {
+        messageId: result.messageId,
+        response: result.response,
+        acceptedRecipients: result.accepted.length
+    });
+};
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
     const mailOptions = {
@@ -46,8 +69,7 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
         <p>Thank you for choosing Eventora.</p>
       `
     };
-    await getTransporter().sendMail(mailOptions);
-    console.log('Booking confirmation email sent successfully to', userEmail);
+    await sendMail(mailOptions, userEmail, 'Booking confirmation email');
 };
 
 const sendOTPEmail = async (userEmail, otp, type) => {
@@ -72,8 +94,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         `
     };
 
-    await getTransporter().sendMail(mailOptions);
-    console.log(`OTP sent to ${userEmail} for ${type}`);
+    await sendMail(mailOptions, userEmail, `OTP email (${type})`);
 };
 
 module.exports = { sendBookingEmail, sendOTPEmail };
